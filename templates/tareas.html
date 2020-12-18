@@ -1,0 +1,39 @@
+<!-- De esta forma se importa una plantilla -->
+{% extends "plantilla.html" %}
+<!-- De esta forma se especifica cual es el bloque implementado -->
+{% block contenido %}
+<div class="starter-template">
+    <h1>Tareas</h1>
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Tarea</th>
+                <th scope="col">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Esta es la manera de realizar ciclos repetitivos -->
+            {% for tarea in tareas %}
+            <tr>
+                <td>{{ tarea.id }}</td>
+                <td>{{ tarea.nombre }}</td>
+                <td>
+                    <a class="btn btn-secondary btn-sm" href="/tarea/u/{{ tarea.id }}">
+                        <!-- Esta es la manera de realizar condicionales -->
+                        {% if tarea.realizada  %}
+                        <i class="fa fa-check"></i>
+                        {% else %}
+                        <i class="fa fa-square-o"></i>
+                        {% endif %}
+                    </a>
+                    <a class="btn btn-danger btn-sm" href="/tarea/d/{{ tarea.id }}">
+                        <i class="fa fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
