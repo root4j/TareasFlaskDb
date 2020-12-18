@@ -64,17 +64,8 @@ class Mensaje:
 # Flag de sesion activa (Variable Global)
 sesion = False
 
-# Secuencia de tarea (Variable Global)
-secuencia = 4
-
 # Usuario conectado (Variable Global)
 usuario = None
-
-# Listado de usuarios inicial (Variable Global)
-usuarios = [Usuario("admin@tasks.com", "Administrador del Sistema", "12345"), Usuario("rjay@tasks.com", "Ruthford Jay", "12345")]
-
-# Listado de tareas inicial (Variable Global)
-tareas_list = []
 
 # **************************************
 # * AREA PARA DECLARACION DE FUNCIONES *
@@ -87,10 +78,11 @@ def login():
     # Declaracion para uso de variables globales
     global sesion
     global usuario
-    global tareas_list
     # Si la sesion esta activa se redirige a la vista de tareas
     if sesion:
-        return render_template("tareas.html", usuario=usuario, tareas=tareas_list)
+        # Se consultan todas las tareas en la base de datos
+        tareas = Tarea.query.all()
+        return render_template("tareas.html", usuario=usuario, tareas=tareas)
     mensaje = Mensaje("alert-info", "", "", False)
     # Se verifica que verbo HTTP se utilizo para la peticion. Si es POST es el formulario, si es GET es desde la URL
     if request.method == "GET":
@@ -125,7 +117,7 @@ def tareas():
     # Declaracion para uso de variables globales
     global sesion
     global usuario
-    # Si la sesion esta iactiva se redirige a la vista de tareas
+    # Si la sesion esta activa se redirige a la vista de tareas
     if sesion:
         # Se consultan todas las tareas en la base de datos
         tareas = Tarea.query.all()
@@ -170,13 +162,17 @@ def crear():
         # Se obtienen los datos del formulario
         nombre = request.form.get("nombre")
 
-        # Se inserta la nueva tarea
-        try:
-            tarea = Tarea(nombre, False)
-            db.session.add(tarea)
-            db.session.commit()
-        except Exception as e:
-            print(e)
+        # Consultar si la tarea ya existe
+        tarea = Tarea.query.filter_by(nombre=nombre).first()
+
+        if tarea == None:
+            # Se inserta la nueva tarea
+            try:
+                tarea = Tarea(nombre, False)
+                db.session.add(tarea)
+                db.session.commit()
+            except Exception as e:
+                print(e)
 
         # Se consultan todas las tareas en la base de datos
         tareas = Tarea.query.all()
@@ -231,7 +227,7 @@ def actualizar(id):
     # Se busca si el usuario se encuentra registrado y su contraseña esta correcta
     tarea = Tarea.query.filter_by(id=id).first()
     if tarea != None:
-        # Se elimina la tarea
+        # Se actualiza la tarea
         try:
             tarea.realizada = not tarea.realizada
             db.session.commit()
@@ -241,6 +237,12 @@ def actualizar(id):
     # Se consultan todas las tareas en la base de datos
     tareas = Tarea.query.all()
     return render_template("tareas.html", usuario=usuario, tareas=tareas)
+
+@app.route("/prueba")
+def prueba():
+    # Declaracion para uso de variables globales
+    global usuario
+    return render_template("prueba.html", usuario=usuario)
 
 # Activar el modo debug de la aplicacion
 if __name__ == "__main__":
