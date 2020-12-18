@@ -28,6 +28,7 @@ VALUES ('admin@tasks.com'
 * https://www.python.org/downloads/
 * https://www.w3schools.com/python/default.asp
 * https://flask.palletsprojects.com/en/1.1.x/installation/#installation
+* https://dbdiagram.io/d/
 * https://entrenamiento-frameworks-web-python.readthedocs.io/es/latest/leccion6/crud_app.html
 * https://www.youtube.com/channel/UCNdy_LQjD_ew3r5zEXOA0aQ
 * https://www.youtube.com/watch?v=7s1RjItUBqU&list=PLL0TiOXBeDagsYUYFO9WMwDtuDuoGZVB9&ab_channel=Fazt
