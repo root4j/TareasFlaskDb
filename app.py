@@ -49,6 +49,23 @@ class Usuario(db.Model):
         self.nombre = nombre
         self.password = password
 
+# Clase para administrar usuarios del sistema
+# ORM
+class Usuarios(db.Model):
+    # Propiedades de la tabla
+    __table_args__ = {'sqlite_autoincrement': True}
+    id = db.Column(db.Integer, primary_key=True)
+    usuario = db.Column(db.String(50), nullable=False)
+    nombres = db.Column(db.String(250), nullable=False)
+    apellidos = db.Column(db.String(250), nullable=False)
+    email = db.Column(db.String(150), nullable=False)
+    # Metodo constructor de la clase
+    def __init__(self, usuario, nombres, apellidos, email):
+        self.email = email
+        self.usuario = usuario
+        self.nombres = nombres
+        self.apellidos = apellidos
+
 # Clase para administrar mensajes del sistema
 class Mensaje:
     # Metodo constructor de la clase
@@ -243,6 +260,47 @@ def prueba():
     # Declaracion para uso de variables globales
     global usuario
     return render_template("prueba.html", usuario=usuario)
+
+# +----------------------------------------+
+# | Funcion que se encarga de crear tareas |
+# +----------------------------------------+
+@app.route("/crearUsuario", methods=["GET", "POST"])
+def crearUsuario():
+    # Declaracion para uso de variables globales
+    global usuario
+    global sesion
+
+    mensaje = Mensaje("alert-info", "", "", False)
+
+    # Se verifica la sesion, sino esta activa se redirige al login
+    if not sesion:
+        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
+        return render_template("login.html", mensaje=mensaje)
+
+    # Se verifica que verbo HTTP se utilizo para la peticion. Si es POST es el formulario, si es GET es desde la URL
+    if request.method == "GET":
+        usuariosList = Usuarios.query.all()
+        return render_template("usuarios.html", usuario=usuario, usuarios=usuariosList)
+    else:
+        # Se obtienen los datos del formulario
+        usuarioGet = request.form.get("usuario")
+        nombres = request.form.get("nombres")
+        apellidos = request.form.get("apellidos")
+        email = request.form.get("email")
+
+        # Se inserta la nueva tarea
+        try:
+            usuarios = Usuarios(usuarioGet, nombres, apellidos, email)
+            db.session.add(usuarios)
+            db.session.commit()
+        except Exception as e:
+            print(e)
+
+        # Se consultan todas las tareas en la base de datos
+        usuariosList = Usuarios.query.all()
+        return render_template("usuarios.html", usuario=usuario, usuarios=usuariosList)
+
+
 
 # Activar el modo debug de la aplicacion
 if __name__ == "__main__":
