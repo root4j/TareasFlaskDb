@@ -1,10 +1,11 @@
 # Importar utilidades del sistema operativo
 import os
+import functools
 # Importar utilidades de encriptacion
 import hashlib
 
 # De esta manera se importan la librerias que vamos a utilizar
-from flask import Flask, render_template, request
+from flask import Flask, render_template, redirect, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 # Se obtiene la ruta de la carpeta donde se encuentra el proyecto
@@ -14,6 +15,7 @@ database_file = "sqlite:///{}".format(os.path.join(project_dir, "tarea.db"))
 
 # Se crea la instancia de Flask
 app = Flask(__name__)
+app.secret_key = os.urandom( 24 )
 # Se le asigna la conexion de la base de datos al contexto Flask
 app.config["SQLALCHEMY_DATABASE_URI"] = database_file
 # SE inactivan el analisis de cambios
@@ -76,30 +78,30 @@ class Mensaje:
         self.esError = esError
 
 # **************************************
-# * AREA PARA DECLARACION DE VARIABLES *
-# **************************************
-# Flag de sesion activa (Variable Global)
-sesion = False
-
-# Usuario conectado (Variable Global)
-usuario = None
-
-# **************************************
 # * AREA PARA DECLARACION DE FUNCIONES *
 # **************************************
+# +---------------------------------------------+
+# | Funcion que se encarga de validar la sesion |
+# +---------------------------------------------+
+def validar_sesion(view):
+    @functools.wraps( view )
+    def wrapped_view(**kwargs):
+        if 'usr_nombre' not in session:
+            return redirect( url_for( 'login' ) )
+        return view( **kwargs )
+
+    return wrapped_view
+
+
 # +---------------------------------------------+
 # | Funcion que se encarga de la vista de login |
 # +---------------------------------------------+
 @app.route("/", methods=["GET", "POST"])
 def login():
-    # Declaracion para uso de variables globales
-    global sesion
-    global usuario
-    # Si la sesion esta activa se redirige a la vista de tareas
-    if sesion:
-        # Se consultan todas las tareas en la base de datos
-        tareas = Tarea.query.all()
-        return render_template("tareas.html", usuario=usuario, tareas=tareas)
+    # Se pregunta se la sesion esta activa para ser redirigido a las tareas
+    if 'usr_nombre' in session:
+        return redirect( url_for('tareas') )
+
     mensaje = Mensaje("alert-info", "", "", False)
     # Se verifica que verbo HTTP se utilizo para la peticion. Si es POST es el formulario, si es GET es desde la URL
     if request.method == "GET":
@@ -118,10 +120,10 @@ def login():
         # Validacion del usuario
         if usuario != None:
             # Se establece la variable sesion en verdadero
-            sesion = True
+            session.clear()
+            session["usr_nombre"] = usuario.nombre
             # Se consultan todas las tareas en la base de datos
-            tareas = Tarea.query.all()
-            return render_template("tareas.html", usuario=usuario, tareas=tareas)
+            return redirect( url_for('tareas') )
         else:
             mensaje = Mensaje("alert-danger", "Validación", "Correo Electronico y/o Contraseña estan errados.", True)
             return render_template("login.html", mensaje=mensaje)
@@ -130,47 +132,34 @@ def login():
 # | Funcion que se encarga de la vista de tareas |
 # +----------------------------------------------+
 @app.route("/tareas")
+@validar_sesion
 def tareas():
-    # Declaracion para uso de variables globales
-    global sesion
-    global usuario
-    # Si la sesion esta activa se redirige a la vista de tareas
-    if sesion:
-        # Se consultan todas las tareas en la base de datos
-        tareas = Tarea.query.all()
-        return render_template("tareas.html", usuario=usuario, tareas=tareas)
-    else:
-        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
-        return render_template("login.html", mensaje=mensaje)
+
+    # Se obtiene el usuario de la sesion
+    usuario = session["usr_nombre"]
+
+    # Se consultas todas las tareas
+    tareas = Tarea.query.all()
+    return render_template("tareas.html", usuario=usuario, tareas=tareas)
 
 # +--------------------------------------------+
 # | Funcion que se encarga de cerrar la sesion |
 # +--------------------------------------------+
 @app.route("/salir")
 def salir():
-    # Declaracion para uso de variables globales
-    global sesion
-    global usuario
-    sesion = False
-    usuario = None
-    mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Terminada", True)
-    return render_template("login.html", mensaje=mensaje)
+    session.clear()
+    return redirect( url_for('login') )
 
 # +----------------------------------------+
 # | Funcion que se encarga de crear tareas |
 # +----------------------------------------+
 @app.route("/crear", methods=["GET", "POST"])
+@validar_sesion
 def crear():
-    # Declaracion para uso de variables globales
-    global usuario
-    global sesion
-
     mensaje = Mensaje("alert-info", "", "", False)
 
-    # Se verifica la sesion, sino esta activa se redirige al login
-    if not sesion:
-        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
-        return render_template("login.html", mensaje=mensaje)
+    # Se obtiene el usuario de la sesion
+    usuario = session["usr_nombre"]
 
     # Se verifica que verbo HTTP se utilizo para la peticion. Si es POST es el formulario, si es GET es desde la URL
     if request.method == "GET":
@@ -191,25 +180,14 @@ def crear():
             except Exception as e:
                 print(e)
 
-        # Se consultan todas las tareas en la base de datos
-        tareas = Tarea.query.all()
-        return render_template("tareas.html", usuario=usuario, tareas=tareas)
+        return redirect( url_for('tareas') )
 
 # +-------------------------------------------+
 # | Funcion que se encarga de eliminar tareas |
 # +-------------------------------------------+
 @app.route("/tarea/d/<int:id>")
+@validar_sesion
 def eliminar(id):
-    # Declaracion para uso de variables globales
-    global usuario
-    global sesion
-
-    mensaje = Mensaje("alert-info", "", "", False)
-
-    # Se verifica la sesion, sino esta activa se redirige al login
-    if not sesion:
-        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
-        return render_template("login.html", mensaje=mensaje)
 
     # Se busca si el usuario se encuentra registrado y su contraseña esta correcta
     tarea = Tarea.query.filter_by(id=id).first()
@@ -221,25 +199,14 @@ def eliminar(id):
         except Exception as e:
             print(e)
 
-    # Se consultan todas las tareas en la base de datos
-    tareas = Tarea.query.all()
-    return render_template("tareas.html", usuario=usuario, tareas=tareas)
+    return redirect( url_for('tareas') )
 
 # +---------------------------------------------+
 # | Funcion que se encarga de actualizar tareas |
 # +---------------------------------------------+
 @app.route("/tarea/u/<int:id>")
+@validar_sesion
 def actualizar(id):
-    # Declaracion para uso de variables globales
-    global usuario
-    global sesion
-
-    mensaje = Mensaje("alert-info", "", "", False)
-
-    # Se verifica la sesion, sino esta activa se redirige al login
-    if not sesion:
-        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
-        return render_template("login.html", mensaje=mensaje)
 
     # Se busca si el usuario se encuentra registrado y su contraseña esta correcta
     tarea = Tarea.query.filter_by(id=id).first()
@@ -251,37 +218,20 @@ def actualizar(id):
         except Exception as e:
             print(e)
 
-    # Se consultan todas las tareas en la base de datos
-    tareas = Tarea.query.all()
-    return render_template("tareas.html", usuario=usuario, tareas=tareas)
-
-@app.route("/prueba")
-def prueba():
-    # Declaracion para uso de variables globales
-    global usuario
-    return render_template("prueba.html", usuario=usuario)
+    return redirect( url_for('tareas') )
 
 # +----------------------------------------+
 # | Funcion que se encarga de crear tareas |
 # +----------------------------------------+
 @app.route("/crearUsuario", methods=["GET", "POST"])
+@validar_sesion
 def crearUsuario():
-    # Declaracion para uso de variables globales
-    global usuario
-    global sesion
 
-    mensaje = Mensaje("alert-info", "", "", False)
-
-    # Se verifica la sesion, sino esta activa se redirige al login
-    if not sesion:
-        mensaje = Mensaje("alert-info", "Sin Sesion", "Sesion Expirada", True)
-        return render_template("login.html", mensaje=mensaje)
+    # Se obtiene el usuario de la sesion
+    usuario = session["usr_nombre"]
 
     # Se verifica que verbo HTTP se utilizo para la peticion. Si es POST es el formulario, si es GET es desde la URL
-    if request.method == "GET":
-        usuariosList = Usuarios.query.all()
-        return render_template("usuarios.html", usuario=usuario, usuarios=usuariosList)
-    else:
+    if request.method == "POST":
         # Se obtienen los datos del formulario
         usuarioGet = request.form.get("usuario")
         nombres = request.form.get("nombres")
@@ -296,10 +246,9 @@ def crearUsuario():
         except Exception as e:
             print(e)
 
-        # Se consultan todas las tareas en la base de datos
-        usuariosList = Usuarios.query.all()
-        return render_template("usuarios.html", usuario=usuario, usuarios=usuariosList)
-
+    # Se consultan todas las tareas en la base de datos
+    usuariosList = Usuarios.query.all()
+    return render_template("usuarios.html", usuario=usuario, usuarios=usuariosList)
 
 
 # Activar el modo debug de la aplicacion

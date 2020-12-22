@@ -2,7 +2,7 @@
 Ejemplo desarrollado en FlasK para la creación de tareas con bases de datos. Para ejecutar la pagina se debe realizar el siguiernte comando:
 
 ```console
-pip install Flask Flask-SQLAlchemy SQLAlchemy
+pip install Flask Flask-SQLAlchemy SQLAlchemy Flask-Session
 python app.py
 ```
 
